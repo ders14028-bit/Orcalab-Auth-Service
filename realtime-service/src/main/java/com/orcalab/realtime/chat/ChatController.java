@@ -37,7 +37,7 @@ public class ChatController {
         MensajeResponse response = new MensajeResponse(mensaje);
         messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/chat", response);
 
-        eventPublisher.publicar(ChatEvento.mensajeEnviado(salaId, usuarioId, mensaje.getId(), request.getMarcadorId()));
+        eventPublisher.publicar(ChatEvento.mensajeEnviado(salaId, usuarioId, mensaje.getId(), mensaje.getContenido(), request.getMarcadorId()));
     }
 
     private Long extraerUsuarioId(Principal principal) {

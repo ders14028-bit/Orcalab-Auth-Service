@@ -26,6 +26,7 @@ public class AlertaService {
 
         messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/alertas", alerta);
 
-        eventPublisher.publicar(MapaEvento.marcador("AlertaGenerada", salaId, usuarioId, alerta.getId()));
+        eventPublisher.publicar(MapaEvento.marcador("AlertaGenerada", salaId, usuarioId, alerta.getId(),
+                "CRITICO", latitud, longitud, descripcion));
     }
 }

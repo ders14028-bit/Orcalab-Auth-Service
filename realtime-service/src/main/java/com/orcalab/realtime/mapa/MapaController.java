@@ -59,7 +59,8 @@ public class MapaController {
         messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/marcadores", marcador);
 
         String tipoEvento = esEdicion ? "MarcadorEditado" : "MarcadorAgregado";
-        eventPublisher.publicar(MapaEvento.marcador(tipoEvento, salaId, usuarioId, marcador.getId()));
+        eventPublisher.publicar(MapaEvento.marcador(tipoEvento, salaId, usuarioId, marcador.getId(),
+                marcador.getTipo(), marcador.getLatitud(), marcador.getLongitud(), marcador.getDescripcion()));
 
         if ("CRITICO".equalsIgnoreCase(marcador.getTipo()) && !esEdicion) {
             alertaService.generarAlertaPorMarcador(salaId, usuarioId, marcador.getId(),
@@ -77,7 +78,7 @@ public class MapaController {
 
         messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/rutas", ruta);
 
-        eventPublisher.publicar(MapaEvento.ruta(salaId, usuarioId, ruta.getId()));
+        eventPublisher.publicar(MapaEvento.ruta(salaId, usuarioId, ruta.getId(), ruta.getDescripcion()));
     }
 
     private Long extraerUsuarioId(Principal principal) {

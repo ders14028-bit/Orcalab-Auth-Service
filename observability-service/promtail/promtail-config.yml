@@ -1,0 +1,42 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: auth-service
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: auth-service
+          __path__: /var/log/orcalab/auth-service/logs/*.log
+
+  - job_name: room-service
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: room-service
+          __path__: /var/log/orcalab/room-service/logs/*.log
+
+  - job_name: realtime-service
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: realtime-service
+          __path__: /var/log/orcalab/realtime-service/logs/*.log
+
+  - job_name: reporting-service
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: reporting-service
+          __path__: /var/log/orcalab/reporting-service/logs/*.log
