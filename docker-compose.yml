@@ -93,6 +93,9 @@ services:
       DB_USERNAME: auth_user
       DB_PASSWORD: auth_password
       JWT_SECRET: *jwt-secret
+      ADMIN_SEED_EMAIL: admin@orcalab.local
+      ADMIN_SEED_PASSWORD: OrcaAdmin123!
+      ADMIN_SEED_NOMBRE: Administrador OrcaLab
     ports:
       - "8081:8081"
     volumes:

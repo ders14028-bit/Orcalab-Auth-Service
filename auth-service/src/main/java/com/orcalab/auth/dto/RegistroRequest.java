@@ -1,6 +1,5 @@
 package com.orcalab.auth.dto;
 
-import com.orcalab.auth.model.Rol;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -18,8 +17,8 @@ public class RegistroRequest {
     @NotBlank
     private String nombre;
 
-    @jakarta.validation.constraints.NotNull
-    private Rol rol; // el cliente indica si se registra como ADMINISTRADOR o INVESTIGADOR
+    // El registro público siempre crea usuarios INVESTIGADOR; el rol ADMINISTRADOR
+    // solo se asigna vía seed inicial o por otro administrador (PATCH /api/auth/usuarios/{id}/rol).
 
     // Getters y setters
     public String getEmail() { return email; }
@@ -30,7 +29,4 @@ public class RegistroRequest {
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
-
-    public Rol getRol() { return rol; }
-    public void setRol(Rol rol) { this.rol = rol; }
 }
