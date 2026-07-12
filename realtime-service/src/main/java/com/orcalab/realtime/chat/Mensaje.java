@@ -12,6 +12,7 @@ public class Mensaje {
     private String id;
 
     private Long salaId;
+    private String canalId;
     private Long usuarioId;
     private String contenido;
     private Long marcadorId; // opcional: id del marcador del mapa al que está vinculado (null si no aplica)
@@ -19,8 +20,9 @@ public class Mensaje {
 
     public Mensaje() {}
 
-    public Mensaje(Long salaId, Long usuarioId, String contenido, Long marcadorId) {
+    public Mensaje(Long salaId, String canalId, Long usuarioId, String contenido, Long marcadorId) {
         this.salaId = salaId;
+        this.canalId = canalId;
         this.usuarioId = usuarioId;
         this.contenido = contenido;
         this.marcadorId = marcadorId;
@@ -31,6 +33,9 @@ public class Mensaje {
 
     public Long getSalaId() { return salaId; }
     public void setSalaId(Long salaId) { this.salaId = salaId; }
+
+    public String getCanalId() { return canalId; }
+    public void setCanalId(String canalId) { this.canalId = canalId; }
 
     public Long getUsuarioId() { return usuarioId; }
     public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }

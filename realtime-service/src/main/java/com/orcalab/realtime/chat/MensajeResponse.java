@@ -6,6 +6,7 @@ public class MensajeResponse {
 
     private String id;
     private Long salaId;
+    private String canalId;
     private Long usuarioId;
     private String contenido;
     private Long marcadorId;
@@ -14,6 +15,7 @@ public class MensajeResponse {
     public MensajeResponse(Mensaje mensaje) {
         this.id = mensaje.getId();
         this.salaId = mensaje.getSalaId();
+        this.canalId = mensaje.getCanalId();
         this.usuarioId = mensaje.getUsuarioId();
         this.contenido = mensaje.getContenido();
         this.marcadorId = mensaje.getMarcadorId();
@@ -22,6 +24,7 @@ public class MensajeResponse {
 
     public String getId() { return id; }
     public Long getSalaId() { return salaId; }
+    public String getCanalId() { return canalId; }
     public Long getUsuarioId() { return usuarioId; }
     public String getContenido() { return contenido; }
     public Long getMarcadorId() { return marcadorId; }

@@ -15,9 +15,9 @@ public class ChatHistorialController {
         this.mensajeRepository = mensajeRepository;
     }
 
-    @GetMapping("/api/salas/{salaId}/mensajes")
-    public List<MensajeResponse> historial(@PathVariable Long salaId) {
-        return mensajeRepository.findBySalaIdOrderByTimestampAsc(salaId).stream()
+    @GetMapping("/api/salas/{salaId}/canales/{canalId}/mensajes")
+    public List<MensajeResponse> historial(@PathVariable Long salaId, @PathVariable String canalId) {
+        return mensajeRepository.findByCanalIdOrderByTimestampAsc(canalId).stream()
                 .map(MensajeResponse::new)
                 .toList();
     }

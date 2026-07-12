@@ -50,7 +50,8 @@ services:
         strip_path: false
 
   # realtime-service atiende tanto los sub-recursos REST de /api/salas/{id}/...
-  # (mensajes, marcadores, rutas, alertas) como el endpoint WebSocket /ws.
+  # (canales -incluye mensajes por canal-, marcadores, rutas, alertas) como el
+  # endpoint WebSocket /ws.
   # Se declaran rutas separadas y mas especificas que room-service-route para
   # que Kong las matchee con prioridad (mayor cantidad de segmentos = mayor
   # prioridad de regex/prefix en Kong).
@@ -59,9 +60,9 @@ services:
     port: 8083
     protocol: http
     routes:
-      - name: realtime-mensajes-route
+      - name: realtime-canales-route
         paths:
-          - "~/api/salas/[^/]+/mensajes"
+          - "~/api/salas/[^/]+/canales"
         strip_path: false
       - name: realtime-marcadores-route
         paths:

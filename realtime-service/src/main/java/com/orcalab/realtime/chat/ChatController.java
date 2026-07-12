@@ -26,18 +26,18 @@ public class ChatController {
         this.eventPublisher = eventPublisher;
     }
 
-    @MessageMapping("/sala/{salaId}/mensaje")
-    public void enviarMensaje(@DestinationVariable Long salaId, @Payload MensajeRequest request,
-                               SimpMessageHeaderAccessor headerAccessor) {
+    @MessageMapping("/sala/{salaId}/canal/{canalId}/mensaje")
+    public void enviarMensaje(@DestinationVariable Long salaId, @DestinationVariable String canalId,
+                               @Payload MensajeRequest request, SimpMessageHeaderAccessor headerAccessor) {
         Long usuarioId = extraerUsuarioId(headerAccessor.getUser());
 
-        Mensaje mensaje = new Mensaje(salaId, usuarioId, request.getContenido(), request.getMarcadorId());
+        Mensaje mensaje = new Mensaje(salaId, canalId, usuarioId, request.getContenido(), request.getMarcadorId());
         mensaje = mensajeRepository.save(mensaje);
 
         MensajeResponse response = new MensajeResponse(mensaje);
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/chat", response);
+        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/canal/" + canalId + "/chat", response);
 
-        eventPublisher.publicar(ChatEvento.mensajeEnviado(salaId, usuarioId, mensaje.getId(), mensaje.getContenido(), request.getMarcadorId()));
+        eventPublisher.publicar(ChatEvento.mensajeEnviado(salaId, canalId, usuarioId, mensaje.getId(), mensaje.getContenido(), request.getMarcadorId()));
     }
 
     private Long extraerUsuarioId(Principal principal) {

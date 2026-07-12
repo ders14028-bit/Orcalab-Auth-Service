@@ -7,4 +7,5 @@ import java.util.List;
 public interface MensajeRepository extends MongoRepository<Mensaje, String> {
 
     List<Mensaje> findBySalaIdOrderByTimestampAsc(Long salaId);
+    List<Mensaje> findByCanalIdOrderByTimestampAsc(String canalId);
 }

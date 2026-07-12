@@ -6,6 +6,7 @@ public class ChatEvento {
 
     private String tipo;
     private Long salaId;
+    private String canalId;
     private Long usuarioId;
     private String mensajeId;
     private String contenido;
@@ -14,10 +15,11 @@ public class ChatEvento {
 
     public ChatEvento() {}
 
-    public static ChatEvento mensajeEnviado(Long salaId, Long usuarioId, String mensajeId, String contenido, Long marcadorId) {
+    public static ChatEvento mensajeEnviado(Long salaId, String canalId, Long usuarioId, String mensajeId, String contenido, Long marcadorId) {
         ChatEvento evento = new ChatEvento();
         evento.tipo = "MensajeEnviado";
         evento.salaId = salaId;
+        evento.canalId = canalId;
         evento.usuarioId = usuarioId;
         evento.mensajeId = mensajeId;
         evento.contenido = contenido;
@@ -27,6 +29,7 @@ public class ChatEvento {
 
     public String getTipo() { return tipo; }
     public Long getSalaId() { return salaId; }
+    public String getCanalId() { return canalId; }
     public Long getUsuarioId() { return usuarioId; }
     public String getMensajeId() { return mensajeId; }
     public String getContenido() { return contenido; }

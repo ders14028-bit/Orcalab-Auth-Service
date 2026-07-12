@@ -1,6 +1,7 @@
 package com.orcalab.realtime.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orcalab.realtime.canal.CanalService;
 import com.orcalab.realtime.model.RolSala;
 import com.orcalab.realtime.state.SalaEstadoService;
 import org.slf4j.Logger;
@@ -23,6 +24,7 @@ public class RoomEventConsumer {
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
     private final SalaEstadoService salaEstadoService;
+    private final CanalService canalService;
 
     @Value("${app.events.topic}")
     private String topic;
@@ -30,10 +32,11 @@ public class RoomEventConsumer {
     private String ultimoIdLeido = "0";
 
     public RoomEventConsumer(RedisTemplate<String, String> redisTemplate, ObjectMapper objectMapper,
-                              SalaEstadoService salaEstadoService) {
+                              SalaEstadoService salaEstadoService, CanalService canalService) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.salaEstadoService = salaEstadoService;
+        this.canalService = canalService;
     }
 
     @Scheduled(fixedDelay = 1000)
@@ -67,7 +70,10 @@ public class RoomEventConsumer {
 
     private void aplicarEvento(SalaEventoRecibido evento) {
         switch (evento.getTipo()) {
-            case "SalaCreada" -> salaEstadoService.registrarSalaCreada(evento.getSalaId(), evento.getUsuarioId());
+            case "SalaCreada" -> {
+                salaEstadoService.registrarSalaCreada(evento.getSalaId(), evento.getUsuarioId());
+                canalService.crearCanalPorDefectoSiNoExiste(evento.getSalaId(), evento.getUsuarioId());
+            }
             case "UsuarioSeUnioASala" -> salaEstadoService.registrarUsuarioUnido(
                     evento.getSalaId(), evento.getUsuarioId(), RolSala.valueOf(evento.getRolEnSala()));
             case "MiembroSalioDeSala" -> salaEstadoService.registrarMiembroSalio(evento.getSalaId(), evento.getUsuarioId());
