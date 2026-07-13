@@ -310,6 +310,31 @@ Para probar WebSocket (presencia, chat, mapa) se usa un cliente STOMP de prueba 
 
 ---
 
+## Limitación conocida: realtime-service con múltiples réplicas
+
+**Síntoma:** con 2+ instancias del backend detrás del ALB, dos usuarios de la misma
+sala enrutados a instancias distintas no se ven mutuamente (presencia), no reciben
+los mensajes/marcadores/cursores/alertas del otro, y la señalización de voz falla —
+con comportamiento inconsistente según a qué instancia enrute el balanceador.
+
+**Causa raíz:** realtime-service usa `enableSimpleBroker` (broker STOMP **en
+memoria, local a cada instancia**). Cada `convertAndSend` solo llega a los clientes
+WebSocket conectados a esa misma instancia; no hay sincronización entre réplicas.
+Los eventos de membresía/presencia sí se propagan (todas las instancias consumen el
+stream `room-events` de Redis y difunden localmente), pero los broadcasts que nacen
+en controllers (chat, mapa, voz) no.
+
+**Mitigación actual:** el ASG está fijado a **1 réplica** (min=1/max=1/desired=1 en
+`terraform/variables.tf`) para garantizar consistencia del tiempo real en demo.
+Los valores de diseño (min=2/max=4) quedan comentados ahí mismo.
+
+**Fix real (pendiente):** migrar de `enableSimpleBroker` a un relay STOMP externo
+compartido — broker RabbitMQ vía `enableStompBrokerRelay`, o un relay propio sobre
+Redis pub/sub que reemplace los `convertAndSend` directos y reenvíe cada broadcast
+a todas las instancias para que cada una lo entregue a sus clientes locales.
+
+---
+
 ## 5. Decisiones de diseño relevantes
 
 - **Roles simplificados a 2 (Admin/Investigador) en vez de 4**, dado el enfoque educativo/institucional del proyecto (se descartaron "Público" y "Organización" del documento de Inception original).

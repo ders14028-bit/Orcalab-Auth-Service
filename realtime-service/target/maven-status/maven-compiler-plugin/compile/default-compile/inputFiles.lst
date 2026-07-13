@@ -50,3 +50,10 @@ C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\mai
 C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\sala\SalaLimpiezaService.java
 C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\service\package-info.java
 C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\state\SalaEstadoService.java
+C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\voz\VozBroadcastService.java
+C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\voz\VozController.java
+C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\voz\VozMensaje.java
+C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\voz\VozSenalMensaje.java
+C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\voz\VozSenalRequest.java
+C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\voz\VozService.java
+C:\Users\ders1\OneDrive\Documentos\Orcalab\Orcalab-Back\realtime-service\src\main\java\com\orcalab\realtime\voz\VozSilenciarRequest.java

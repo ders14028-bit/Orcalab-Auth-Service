@@ -90,3 +90,16 @@ services:
         paths:
           - /api/reportes
         strip_path: false
+
+  # Health check para el ALB: /health -> actuator de auth-service.
+  # Valida que Kong este arriba Y que al menos un microservicio responda.
+  - name: health-check
+    host: auth-service-upstream
+    port: 8081
+    protocol: http
+    path: /actuator/health
+    routes:
+      - name: health-route
+        paths:
+          - /health
+        strip_path: true

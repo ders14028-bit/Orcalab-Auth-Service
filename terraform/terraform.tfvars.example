@@ -1,0 +1,6 @@
+# Copia este archivo a terraform.tfvars y pon valores reales.
+# terraform.tfvars esta gitignored — NUNCA subas los valores reales al repo.
+
+db_master_password    = "CAMBIA-ESTO-password-postgres"
+mongo_master_password = "CAMBIA-ESTO-password-mongo"
+jwt_secret            = "CAMBIA-ESTO-minimo-64-caracteres-hex-para-256-bits"

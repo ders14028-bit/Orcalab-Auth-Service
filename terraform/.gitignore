@@ -1,0 +1,13 @@
+# Estado local de Terraform — contiene datos sensibles (passwords en claro)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Variables con secretos reales — solo el .example va al repo
+terraform.tfvars
+*.auto.tfvars
+
+# Planes guardados
+*.tfplan
+crash.log

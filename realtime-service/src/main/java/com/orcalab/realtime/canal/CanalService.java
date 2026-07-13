@@ -78,6 +78,12 @@ public class CanalService {
             return;
         }
         Canal canal = new Canal(salaId, NOMBRE_CANAL_POR_DEFECTO, TipoCanal.TEXTO, creadorId);
-        canalRepository.save(canal);
+        canal = canalRepository.save(canal);
+
+        // Difundir igual que los canales creados por REST: el creador de la sala ya está
+        // dentro (fue redirigido de inmediato) y su fetch inicial de canales casi siempre
+        // llega antes de que este consumidor procese SalaCreada — sin el broadcast, el
+        // líder no ve el canal "general" hasta recargar la página.
+        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/canales", canal);
     }
 }

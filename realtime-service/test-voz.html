@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Test señalización de voz — realtime-service</title>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://unpkg.com/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 12px; background: #1b1d21; color: #ddd; }
+  h1 { font-size: 16px; margin: 0 0 12px; }
+  .paneles { display: flex; gap: 12px; }
+  .panel { flex: 1; min-width: 0; border: 1px solid #444; border-radius: 6px; padding: 10px; background: #24262b; }
+  .panel h2 { font-size: 14px; margin: 0 0 8px; }
+  label { display: block; font-size: 11px; color: #999; margin-top: 6px; }
+  input, textarea { width: 100%; box-sizing: border-box; background: #111; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 4px 6px; font-size: 12px; font-family: monospace; }
+  textarea { resize: vertical; }
+  .fila { display: flex; gap: 6px; margin-top: 6px; }
+  .fila > * { flex: 1; }
+  button { background: #3a5; color: #fff; border: none; border-radius: 4px; padding: 6px 8px; font-size: 12px; cursor: pointer; }
+  button:hover { background: #4b6; }
+  button.peligro { background: #a33; }
+  button.peligro:hover { background: #b44; }
+  .estado { font-size: 11px; margin-top: 6px; }
+  .estado.ok { color: #6d6; }
+  .estado.error { color: #e66; }
+  .log { margin-top: 8px; height: 260px; overflow-y: auto; background: #000; border-radius: 4px; padding: 6px; font-size: 11px; font-family: monospace; white-space: pre-wrap; }
+  .log .in { color: #7cf; }
+  .log .out { color: #fc7; }
+  .log .err { color: #f77; }
+  fieldset { border: 1px solid #333; border-radius: 4px; margin-top: 8px; padding: 6px; }
+  legend { font-size: 11px; color: #999; padding: 0 4px; }
+</style>
+</head>
+<body>
+
+<h1>Test señalización de voz (STOMP) — dos usuarios simulados en la misma página</h1>
+<p style="font-size:12px;color:#999;margin:0 0 12px">
+  Este cliente NO hace WebRTC real: solo prueba que la señalización (entrar/salir/silenciar/oferta/respuesta/ice) viaja
+  correctamente por STOMP, incluyendo que oferta/respuesta/ice lleguen únicamente al usuario destinatario vía
+  <code>/user/queue/voz/senal</code>.
+</p>
+
+<div class="paneles" id="paneles"></div>
+
+<script>
+function crearPanel(nombre, defaults) {
+  defaults = defaults || {};
+  const contenedor = document.createElement('div');
+  contenedor.className = 'panel';
+  contenedor.innerHTML = `
+    <h2>${nombre}</h2>
+    <label>URL WS (SockJS)</label>
+    <input class="url" value="http://localhost:8083/ws" />
+    <label>Token JWT</label>
+    <input class="token" placeholder="pegar JWT aquí" value="${defaults.token || ''}" />
+    <div class="fila">
+      <div><label>salaId</label><input class="salaId" value="${defaults.salaId || '1'}" /></div>
+      <div><label>canalId</label><input class="canalId" placeholder="id de canal VOZ" value="${defaults.canalId || ''}" /></div>
+    </div>
+    <div class="fila">
+      <button class="conectar">Conectar</button>
+      <button class="desconectar peligro">Desconectar</button>
+    </div>
+    <div class="estado">Desconectado</div>
+
+    <fieldset>
+      <legend>Voz</legend>
+      <div class="fila">
+        <button class="entrar">Entrar a voz</button>
+        <button class="salir peligro">Salir de voz</button>
+      </div>
+      <div class="fila">
+        <label style="flex:0 0 auto"><input type="checkbox" class="muteado" style="width:auto"/> Muteado</label>
+        <button class="enviarMute">Enviar estado mute</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Señalización punto-a-punto (payload de prueba)</legend>
+      <label>Destinatario (usuarioId)</label>
+      <input class="destinatario" placeholder="ej. 2" />
+      <label>SDP de prueba (para oferta/respuesta)</label>
+      <textarea class="sdp" rows="2">sdp-de-prueba-desde-${nombre}</textarea>
+      <label>Candidato ICE de prueba (JSON, para ice)</label>
+      <textarea class="candidato" rows="2">{"candidate":"candidate-de-prueba","sdpMid":"0","sdpMLineIndex":0}</textarea>
+      <div class="fila">
+        <button class="ofertar">Enviar oferta</button>
+        <button class="responder">Enviar respuesta</button>
+        <button class="ice">Enviar ICE</button>
+      </div>
+    </fieldset>
+
+    <div class="log"></div>
+  `;
+  document.getElementById('paneles').appendChild(contenedor);
+
+  const $ = (sel) => contenedor.querySelector(sel);
+  const logEl = $('.log');
+  const estadoEl = $('.estado');
+  let client = null;
+
+  function log(clase, texto) {
+    const linea = document.createElement('div');
+    linea.className = clase;
+    linea.textContent = `[${new Date().toLocaleTimeString()}] ${texto}`;
+    logEl.appendChild(linea);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setEstado(texto, clase) {
+    estadoEl.textContent = texto;
+    estadoEl.className = 'estado ' + (clase || '');
+  }
+
+  function destino(sufijo) {
+    return `/app/sala/${$('.salaId').value}/canal/${$('.canalId').value}/voz/${sufijo}`;
+  }
+
+  $('.conectar').onclick = () => {
+    if (client) return;
+    client = new StompJs.Client({
+      webSocketFactory: () => new SockJS($('.url').value),
+      connectHeaders: { Authorization: `Bearer ${$('.token').value}` },
+      reconnectDelay: 0,
+      debug: () => {},
+    });
+
+    client.onConnect = () => {
+      setEstado('Conectado', 'ok');
+      log('in', 'Conectado.');
+
+      client.subscribe(`/topic/sala/${$('.salaId').value}/canal/${$('.canalId').value}/voz/presentes`, (msg) => {
+        log('in', 'presentes: ' + msg.body);
+      });
+
+      client.subscribe('/user/queue/voz/senal', (msg) => {
+        log('in', 'señal privada (/user/queue/voz/senal): ' + msg.body);
+      });
+    };
+
+    client.onStompError = (frame) => {
+      setEstado('Error STOMP', 'error');
+      log('err', 'Error STOMP: ' + JSON.stringify(frame.headers));
+    };
+
+    client.onWebSocketClose = () => {
+      setEstado('Desconectado', 'error');
+    };
+
+    client.activate();
+  };
+
+  $('.desconectar').onclick = () => {
+    if (client) { client.deactivate(); client = null; }
+    setEstado('Desconectado', 'error');
+  };
+
+  $('.entrar').onclick = () => {
+    client?.publish({ destination: destino('entrar'), body: '{}' });
+    log('out', 'publicado: voz/entrar');
+  };
+
+  $('.salir').onclick = () => {
+    client?.publish({ destination: destino('salir'), body: '{}' });
+    log('out', 'publicado: voz/salir');
+  };
+
+  $('.enviarMute').onclick = () => {
+    const body = JSON.stringify({ muteado: $('.muteado').checked });
+    client?.publish({ destination: destino('silenciar'), body });
+    log('out', 'publicado: voz/silenciar ' + body);
+  };
+
+  $('.ofertar').onclick = () => {
+    const body = JSON.stringify({ paraUsuarioId: Number($('.destinatario').value), sdp: $('.sdp').value });
+    client?.publish({ destination: destino('oferta'), body });
+    log('out', 'publicado: voz/oferta ' + body);
+  };
+
+  $('.responder').onclick = () => {
+    const body = JSON.stringify({ paraUsuarioId: Number($('.destinatario').value), sdp: $('.sdp').value });
+    client?.publish({ destination: destino('respuesta'), body });
+    log('out', 'publicado: voz/respuesta ' + body);
+  };
+
+  $('.ice').onclick = () => {
+    let candidato;
+    try { candidato = JSON.parse($('.candidato').value); } catch (e) { log('err', 'JSON de candidato inválido'); return; }
+    const body = JSON.stringify({ paraUsuarioId: Number($('.destinatario').value), candidato });
+    client?.publish({ destination: destino('ice'), body });
+    log('out', 'publicado: voz/ice ' + body);
+  };
+}
+
+// Datos de prueba ya creados en el entorno docker-compose local (sala 32, canal VOZ "General Voz").
+// Los tokens expiran junto con el JWT emitido (24h) — si dejan de servir, regenerarlos vía
+// POST /api/auth/registro o /api/auth/login en auth-service y pegarlos aquí o en el campo Token JWT.
+const SALA_ID = '32';
+const CANAL_ID = '6a555800d7b7873eaf74357f';
+const TOKEN_A = 'eyJhbGciOiJIUzUxMiJ9.eyJ1c3VhcmlvSWQiOjUxLCJyb2wiOiJJTlZFU1RJR0FET1IiLCJzdWIiOiJ2b3phQG9yY2FsYWIuZWR1IiwiaWF0IjoxNzgzOTc3OTAyLCJleHAiOjE3ODQwNjQzMDJ9.8QMCWfnpiAb59EoI2TOJoVmcRW76OuB4LuOhKxnV8NHQeq-VMtiCLmDo25hv3egwJ-KV4KscZvywU4D2b9MDVw';
+const TOKEN_B = 'eyJhbGciOiJIUzUxMiJ9.eyJ1c3VhcmlvSWQiOjUyLCJyb2wiOiJJTlZFU1RJR0FET1IiLCJzdWIiOiJ2b3piQG9yY2FsYWIuZWR1IiwiaWF0IjoxNzgzOTc3OTAyLCJleHAiOjE3ODQwNjQzMDJ9.mSmrELB21isxwKUbPSfLWLVNS2v3-qLJg2p_8imLsCxQ5mSgl9Wzw2ARqnzMgN70NbRqx3w_c1QNuDWep6mk4g';
+const TOKEN_C = 'eyJhbGciOiJIUzUxMiJ9.eyJ1c3VhcmlvSWQiOjUzLCJyb2wiOiJJTlZFU1RJR0FET1IiLCJzdWIiOiJ2b3pjQG9yY2FsYWIuZWR1IiwiaWF0IjoxNzgzOTc3OTAzLCJleHAiOjE3ODQwNjQzMDN9.npz8liwb4dRsLsSQRgKfGBO4h7H790pzvn-NRqsZORTCdmyJWwyomywUcq25-bG1D9D4GED6YS6ryCZQ9sCRJg';
+
+crearPanel('Usuario A (id 51)', { token: TOKEN_A, salaId: SALA_ID, canalId: CANAL_ID });
+crearPanel('Usuario B (id 52)', { token: TOKEN_B, salaId: SALA_ID, canalId: CANAL_ID });
+crearPanel('Usuario C (id 53, control negativo)', { token: TOKEN_C, salaId: SALA_ID, canalId: CANAL_ID });
+</script>
+
+</body>
+</html>
