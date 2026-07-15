@@ -22,17 +22,25 @@ psql -h ${rds_endpoint} -U ${db_username} -d auth_db -tc \
   psql -h ${rds_endpoint} -U ${db_username} -d auth_db -c "CREATE DATABASE room_db"
 unset PGPASSWORD
 
-# --- 3. Configuracion de Kong y compose de produccion ------------------------
+# --- 3. Configuracion de Kong, Nginx y compose de produccion -----------------
 cat > /opt/orcalab/kong.yml <<'KONG_EOF'
 ${kong_config}
 KONG_EOF
+
+cat > /opt/orcalab/nginx.conf <<'NGINX_EOF'
+${nginx_config}
+NGINX_EOF
 
 cat > /opt/orcalab/docker-compose.yml <<'COMPOSE_EOF'
 ${compose_config}
 COMPOSE_EOF
 chmod 600 /opt/orcalab/docker-compose.yml # contiene credenciales
 
-# --- 4. Login a ECR (credenciales via LabInstanceProfile) y arranque ---------
+# --- 4. Build del front (S3 staging privado, via LabInstanceProfile) ---------
+mkdir -p /opt/orcalab/front-dist
+aws s3 sync "s3://${front_bucket}" /opt/orcalab/front-dist --delete --region ${aws_region}
+
+# --- 5. Login a ECR (credenciales via LabInstanceProfile) y arranque ---------
 aws ecr get-login-password --region ${aws_region} | \
   docker login --username AWS --password-stdin ${ecr_registry}
 

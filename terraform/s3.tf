@@ -1,6 +1,16 @@
 # ---------------------------------------------------------------------------
-# Hosting estático del frontend en S3.
-# El build (Orcalab-Front/dist) se sube con scripts/deploy-front.ps1.
+# Bucket de staging privado del frontend.
+#
+# Desde el cambio a "una sola URL" (Nginx + Kong en la misma EC2 sirviendo
+# todo detras del ALB), este bucket YA NO es el punto de entrada publico del
+# front. Ahora es solo un intermediario privado: deploy-front.ps1 sube el
+# build (dist/) aqui, y cada instancia del ASG lo sincroniza a
+# /opt/orcalab/front-dist en el arranque (ver templates/user_data.sh.tpl) y
+# via SSM RunCommand para redeploys sin recrear instancias
+# (scripts/deploy-front.ps1). Nginx lo sirve desde ahi.
+#
+# Se mantiene el bucket (no se borra) por si se quiere revertir el enfoque;
+# esta privado (block public access completo, sin bucket policy de lectura).
 # ---------------------------------------------------------------------------
 
 data "aws_caller_identity" "current" {}
@@ -11,54 +21,17 @@ resource "aws_s3_bucket" "front" {
   force_destroy = true # permite terraform destroy aunque tenga objetos
 
   tags = {
-    Name = "${var.project_name}-front"
+    Name = "${var.project_name}-front-staging"
   }
 }
 
-resource "aws_s3_bucket_website_configuration" "front" {
-  bucket = aws_s3_bucket.front.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  # index.html tambien como error document: al recargar en una ruta profunda
-  # de React Router (ej. /salas/3), S3 no encuentra el objeto y devuelve el
-  # index, dejando que el router del cliente resuelva la ruta.
-  error_document {
-    key = "index.html"
-  }
-}
-
-# El account-level block de acceso publico esta activo por defecto en buckets
-# nuevos; hay que relajarlo en este bucket para poder adjuntar la politica de
-# lectura publica de objetos.
+# Bucket privado: nada de acceso publico. Solo lo leen las instancias del ASG
+# (via LabInstanceProfile) y quien despliega (via deploy-front.ps1).
 resource "aws_s3_bucket_public_access_block" "front" {
   bucket = aws_s3_bucket.front.id
 
-  block_public_acls       = true # ACLs siguen bloqueadas: solo se abre via politica
+  block_public_acls       = true
   ignore_public_acls      = true
-  block_public_policy     = false
-  restrict_public_buckets = false
-}
-
-# Minimo privilegio: solo s3:GetObject sobre los objetos (bucket/*),
-# sin listar el bucket ni ninguna otra accion.
-resource "aws_s3_bucket_policy" "front_public_read" {
-  bucket = aws_s3_bucket.front.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadObjects"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.front.arn}/*"
-      }
-    ]
-  })
-
-  depends_on = [aws_s3_bucket_public_access_block.front]
+  block_public_policy     = true
+  restrict_public_buckets = true
 }

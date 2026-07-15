@@ -74,6 +74,15 @@ resource "aws_instance" "mongo" {
   tags = {
     Name = "${var.project_name}-mongo"
   }
+
+  lifecycle {
+    # data.aws_ami.ubuntu usa most_recent=true: sin esto, cualquier apply
+    # posterior a que Canonical publique una AMI nueva reemplazaria esta
+    # instancia (y su volumen con realtime_db/reporting_db) sin que el cambio
+    # tenga nada que ver con lo que se esta aplicando. Esta instancia es
+    # stateful (a diferencia de las del ASG) y no debe recrearse por drift de AMI.
+    ignore_changes = [ami]
+  }
 }
 
 # --- ElastiCache Redis: eventos room-events / realtime-events ----------------

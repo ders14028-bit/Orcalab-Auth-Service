@@ -113,9 +113,15 @@ Plataforma colaborativa en tiempo real para investigación y conservación de or
 
 ### 1.2 Resumen de puertos y bases de datos
 
+> **Nota (despliegue AWS):** en producción, cada instancia del ASG corre además
+> **Nginx en el puerto 80**, delante de Kong, como única entrada publica de la
+> instancia (ver sección "Una sola URL: Nginx + Kong en la misma instancia" más
+> abajo). Kong deja de exponerse directamente al ALB.
+
 | Componente | Puerto | Base de datos propia | Puerto BD |
 |---|---|---|---|
-| Kong (API Gateway) | 8000 (proxy) / 8001 (admin) | — (o Postgres/DB-less) | — |
+| Nginx (front + proxy, solo en AWS) | 80 | — | — |
+| Kong (API Gateway) | 8000 (proxy, interno) / 8001 (admin) | — (o Postgres/DB-less) | — |
 | `auth-service` | 8081 | PostgreSQL `auth_db` | 5433 |
 | `room-service` | 8082 | PostgreSQL `room_db` | 5434 |
 | `realtime-service` | 8083 (REST + WS `/ws`) | MongoDB `realtime_db` | 27019 |
@@ -335,36 +341,64 @@ a todas las instancias para que cada una lo entregue a sus clientes locales.
 
 ---
 
-## Limitación conocida: HTTPS con certificado autofirmado (2 pasos manuales)
+## Arquitectura de despliegue: una sola URL (Nginx + Kong en la misma instancia)
 
-**Por qué:** el canal de voz necesita `getUserMedia`, que los navegadores bloquean
-fuera de un "contexto seguro" (HTTPS). En este Learner Lab, ni `acm:RequestCertificate`
-(DuckDNS no soporta el CNAME arbitrario que ACM exige para validación DNS) ni la
-validación por email (los correos `admin@`/`webmaster@...` van a duckdns.org, no a
-nosotros) son viables, y CloudFront (que daría HTTPS gratis sin nada de esto vía
-`*.cloudfront.net`) está bloqueado por IAM. La alternativa que sí funciona:
-`acm:ImportCertificate` con un certificado **autofirmado** (no requiere validar
-dominio), generado con `terraform/scripts/generate-alb-cert.sh` y adjuntado al
-listener `:443` del ALB. El frontend se sirve desde el **endpoint REST de S3**
-(`https://orcalab-front-392517188231.s3.us-east-1.amazonaws.com/index.html`), que
-trae HTTPS gratis con certificado válido de AWS — no el endpoint de "website
-hosting" (ese es HTTP-only).
+**Por qué se hizo:** el profesor exige que el proyecto se acceda mediante **una
+sola URL**, no dos separadas. Antes de este cambio, el front vivía en un bucket
+S3 (endpoint REST, `https://orcalab-front-<cuenta>.s3.us-east-1.amazonaws.com`)
+y el backend en el ALB (`https://orcalab-alb-....elb.amazonaws.com`) — dos
+orígenes distintos.
 
-Como consecuencia, **cualquier evaluador debe hacer 2 pasos manuales antes de usar
-la app**:
+**Qué cambió:** cada instancia del Auto Scaling Group ahora corre, además de
+Kong y los 4 microservicios, un contenedor **Nginx** (`terraform/templates/nginx.conf.tpl`)
+que es la única entrada publica de la instancia (puerto 80, detrás del ALB):
 
-1. **Aceptar el certificado autofirmado del backend, una vez por navegador:**
-   visitar directamente `https://orcalab-alb-1090154343.us-east-1.elb.amazonaws.com/`
-   y aceptar la advertencia de seguridad ("Avanzado" → "Continuar de todos modos").
-   Sin este paso, el frontend puede cargar pero todas las llamadas a la API y el
-   WebSocket fallarán en silencio (el navegador bloquea en segundo plano las
-   conexiones a un host con certificado no confiable hasta que el usuario lo
-   autoriza explícitamente).
-2. **No recargar la página (F5) estando dentro de una ruta profunda** como
-   `/salas/3`. El endpoint REST de S3 no tiene el "error document fallback" que sí
-   tiene el website hosting, así que una recarga en esa ruta devuelve un error de
-   S3 en vez de la app. Navegar solo con clics dentro de la SPA; para volver a
-   empezar, ir a `/index.html`.
+- `/` y los assets estáticos → sirve el build de React (`Orcalab-Front/dist`,
+  sincronizado desde un bucket S3 de **staging privado** a
+  `/opt/orcalab/front-dist` en el arranque, ver `terraform/templates/user_data.sh.tpl`).
+- `/api/**`, `/ws`, `/health` → `proxy_pass` a Kong (`localhost:8000` dentro del
+  bridge de docker de la instancia; Kong ya no se publica directamente al host
+  ni al ALB).
+
+El bucket S3 del front (`front_bucket_name` en outputs) **se mantiene**, pero
+pasó de sitio público a staging intermedio: `terraform/scripts/deploy-front.ps1`
+sube el build ahí y luego redespliega en caliente vía `aws ssm send-command`
+sobre las instancias vivas del ASG (re-sync + `docker restart nginx`), sin
+esperar a que se recreen instancias.
+
+**Por qué esta opción y no otras:**
+- **CloudFront** (daría HTTPS + una sola URL fácilmente vía `*.cloudfront.net`)
+  está bloqueado por IAM en este Learner Lab — confirmado con error real, no
+  solo simulación.
+- **Route53** (dominio propio + un solo registro DNS apuntando al ALB) se dejó
+  fuera de alcance por ahora — no se persiguió un dominio real ni una validación
+  DNS/email de ACM para esta iteración.
+- **DocumentDB** bloqueado (deny explícito de IAM) es la razón por la que Mongo
+  vive en EC2 propia — no relacionado directamente con esta decisión, pero es
+  la misma familia de restricciones del Learner Lab que fuerza soluciones "a
+  mano" en vez de servicios gestionados.
+- **Kong no tiene serving estático nativo en su edición open-source** (DB-less);
+  hacerlo con un plugin custom en Lua era más complejo que agregar un sidecar
+  Nginx, que es un patrón estándar y bien entendido.
+
+**Trade-offs aceptados conscientemente:**
+1. **El certificado autofirmado ahora cubre todo el sitio**, no solo el
+   backend: cualquier evaluador debe aceptar la advertencia "no seguro" del
+   navegador **una vez** al visitar `https://<alb-dns-name>/` (Avanzado →
+   Continuar de todos modos) antes de que cargue nada — front, API y WebSocket
+   comparten el mismo origen y el mismo certificado. Antes este paso solo
+   afectaba al backend (el front en S3 tenía certificado válido de Amazon).
+2. **Se pierde la separación estático/dinámico**: si Kong o alguno de los
+   microservicios se cae, Nginx sigue respondiendo pero las llamadas a `/api/**`
+   y `/ws` fallarán — ya no hay independencia entre "el front sigue arriba" y
+   "el backend está caído", como sí la había cuando el front vivía en S3
+   (servicio gestionado, separado del ALB/EC2 por completo).
+3. Como beneficio colateral: al compartir origen, **desaparece el problema de
+   CORS** entre front y backend (`Orcalab-Front/.env.production` ya no fija
+   `VITE_API_BASE_URL`; las llamadas usan rutas relativas resueltas por Nginx).
+   El fallback `try_files ... /index.html` de Nginx también deja sin efecto el
+   viejo problema de recargar en rutas profundas de React Router, sea cual sea
+   el router usado por el front.
 
 ---
 

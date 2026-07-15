@@ -42,7 +42,9 @@ locals {
     db_username    = var.db_master_username
     db_password    = var.db_master_password
     kong_config    = file("${path.module}/../api-gateway/kong.yml")
+    nginx_config   = file("${path.module}/templates/nginx.conf.tpl")
     compose_config = local.compose_config
+    front_bucket   = aws_s3_bucket.front.bucket
   })
 }
 
@@ -83,7 +85,7 @@ resource "aws_autoscaling_group" "app" {
     version = "$Latest"
   }
 
-  target_group_arns         = [aws_lb_target_group.kong.arn]
+  target_group_arns         = [aws_lb_target_group.web.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 420 # arranque: apt + truststore + pull de 5 imagenes + boot de Spring
 

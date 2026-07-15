@@ -1,5 +1,7 @@
 # ---------------------------------------------------------------------------
-# Application Load Balancer (internet-facing) -> Target Group -> Kong :8000
+# Application Load Balancer (internet-facing) -> Target Group -> Nginx :80
+# Nginx es ahora la unica entrada de la instancia: sirve el front (React) y
+# reenvia /api/**, /ws y /health a Kong (que ya no se publica al host).
 # ---------------------------------------------------------------------------
 
 resource "aws_lb" "main" {
@@ -14,14 +16,14 @@ resource "aws_lb" "main" {
   }
 }
 
-resource "aws_lb_target_group" "kong" {
-  name     = "${var.project_name}-tg-kong"
-  port     = 8000
+resource "aws_lb_target_group" "web" {
+  name     = "${var.project_name}-tg-web"
+  port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
 
   health_check {
-    path                = "/health" # ruta de kong.yml -> /actuator/health de auth-service
+    path                = "/health" # nginx -> kong -> /actuator/health de auth-service
     protocol            = "HTTP"
     matcher             = "200"
     interval            = 30
@@ -38,7 +40,7 @@ resource "aws_lb_target_group" "kong" {
   }
 
   tags = {
-    Name = "${var.project_name}-tg-kong"
+    Name = "${var.project_name}-tg-web"
   }
 }
 
@@ -49,13 +51,14 @@ resource "aws_lb_listener" "http" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.kong.arn
+    target_group_arn = aws_lb_target_group.web.arn
   }
 }
 
 # Certificado autofirmado (ver variables.tf) importado a ACM. El navegador
-# mostrará advertencia de "no confiable" — ver README, sección de limitaciones,
-# para el paso manual de aceptarla una vez por navegador.
+# mostrará advertencia de "no confiable" para todo el sitio (front + API +
+# WebSocket comparten el mismo origen y certificado) — ver README, sección de
+# limitaciones, para el paso manual de aceptarla una vez por navegador.
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.main.arn
   port              = 443
@@ -65,6 +68,6 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.kong.arn
+    target_group_arn = aws_lb_target_group.web.arn
   }
 }

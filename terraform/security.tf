@@ -26,9 +26,9 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    description = "Salida solo hacia las instancias (puerto de Kong)"
-    from_port   = 8000
-    to_port     = 8000
+    description = "Salida solo hacia las instancias (puerto de Nginx)"
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
@@ -38,16 +38,20 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# --- EC2 (Kong + microservicios): solo acepta trafico del ALB ----------------
+# --- EC2 (Nginx + Kong + microservicios): solo acepta trafico del ALB --------
 resource "aws_security_group" "app" {
-  name        = "${var.project_name}-app-sg"
+  name = "${var.project_name}-app-sg"
+  # Nota: description es inmutable en AWS (ForceNew) - se deja el texto
+  # original aunque ya no mencione a Kong especificamente, para no forzar un
+  # reemplazo de SG innecesario. El comentario de arriba en el archivo y el
+  # README documentan que ahora es Nginx (80) quien recibe el trafico del ALB.
   description = "Instancias EC2: Kong 8000 solo desde el ALB"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "Kong proxy desde el ALB"
-    from_port       = 8000
-    to_port         = 8000
+    description     = "Nginx (front + proxy a Kong) desde el ALB"
+    from_port       = 80
+    to_port         = 80
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }

@@ -1,4 +1,4 @@
-# Compose de producción — solo Kong + los 4 microservicios.
+# Compose de producción — Nginx (única entrada publica) + Kong + los 4 microservicios.
 # Las bases de datos son servicios gestionados de AWS (RDS/DocumentDB/ElastiCache).
 # Renderizado por Terraform (templatefile) e inyectado via user-data.
 
@@ -68,13 +68,28 @@ services:
       KONG_LOG_LEVEL: info
     volumes:
       - /opt/orcalab/kong.yml:/etc/kong/kong.yml:ro
-    ports:
-      - "8000:8000"
+    # Sin "ports": ya no se publica al host. Solo nginx lo alcanza via
+    # orcalab-net (nombre de servicio "kong", puerto 8000 interno).
     depends_on:
       - auth-service
       - room-service
       - realtime-service
       - reporting-service
+    networks: [orcalab-net]
+
+  # Unica entrada publica de la instancia: sirve el build de React y reenvia
+  # /api/**, /ws y /health a Kong. Ver terraform/templates/nginx.conf.tpl.
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+    volumes:
+      - /opt/orcalab/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /opt/orcalab/front-dist:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - kong
     networks: [orcalab-net]
 
 networks:

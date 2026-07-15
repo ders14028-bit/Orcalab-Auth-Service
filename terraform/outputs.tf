@@ -18,18 +18,18 @@ output "nat_gateway_ip" {
   value       = aws_eip.nat.public_ip
 }
 
-output "front_website_url" {
-  description = "URL pública del frontend estático en S3"
-  value       = "http://${aws_s3_bucket_website_configuration.front.website_endpoint}"
-}
-
 output "front_bucket_name" {
-  description = "Nombre del bucket S3 del frontend (para aws s3 sync)"
+  description = "Nombre del bucket S3 de staging privado del front (para aws s3 sync desde deploy-front.ps1; ya no es publico)"
   value       = aws_s3_bucket.front.id
 }
 
+output "asg_name" {
+  description = "Nombre del Auto Scaling Group (para SSM RunCommand desde deploy-front.ps1)"
+  value       = aws_autoscaling_group.app.name
+}
+
 output "alb_dns_name" {
-  description = "URL pública de OrcaLab (http:// o https://<este-dns> — ver README para el paso manual de aceptar el certificado autofirmado)"
+  description = "URL unica y publica de OrcaLab — front + API + WebSocket, todo bajo este mismo DNS (http:// o https://<este-dns> — ver README para el paso manual de aceptar el certificado autofirmado)"
   value       = aws_lb.main.dns_name
 }
 
