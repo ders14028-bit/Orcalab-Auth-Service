@@ -125,3 +125,12 @@ variable "alb_certificate_arn" {
   description = "ARN del certificado ACM (autofirmado, importado) para el listener HTTPS del ALB"
   type        = string
 }
+
+# Origen real del front, para la whitelist de CORS de realtime-service (setAllowedOrigins,
+# no wildcard). Separado en su propia variable -en vez de derivarlo del DNS del ALB- porque
+# se espera migrar de DuckDNS a un dominio propio más adelante sin tocar código Java.
+variable "frontend_origin" {
+  description = "Origen (scheme+host, sin trailing slash) del frontend en producción, para CORS"
+  type        = string
+  default     = "https://orcalab.duckdns.org"
+}

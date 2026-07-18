@@ -3,6 +3,7 @@ package com.orcalab.realtime.room;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -39,6 +40,30 @@ public class RoomServiceClient {
                     .anyMatch(m -> usuarioId.equals(m.usuarioId()) && "LIDER".equals(m.rolEnSala()));
         } catch (RestClientException e) {
             throw new IllegalStateException("No se pudo verificar el rol del usuario en room-service", e);
+        }
+    }
+
+    /**
+     * Verifica membresia contra room-service (fuente de verdad), no contra el cache en memoria
+     * de SalaEstadoService — igual que esLider(), para que un usuario expulsado recientemente
+     * (o cuya sala fue eliminada) pierda acceso de inmediato aunque su JWT siga siendo valido.
+     * GET /api/salas/{salaId} ya hace ese chequeo internamente (verificarEsMiembro) usando el
+     * usuarioId resuelto del propio token reenviado, asi que reusarlo evita duplicar la logica.
+     */
+    public boolean esMiembro(Long salaId, String token) {
+        try {
+            restClient.get()
+                    .uri("/api/salas/{salaId}", salaId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (HttpClientErrorException.Forbidden | HttpClientErrorException.BadRequest e) {
+            // Forbidden = no es miembro; BadRequest = la sala no existe en room-service.
+            // Ambos casos, para quien pregunta, equivalen a "no tienes acceso a esta sala".
+            return false;
+        } catch (RestClientException e) {
+            throw new IllegalStateException("No se pudo verificar la membresía en room-service", e);
         }
     }
 

@@ -6,5 +6,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 
 public interface EventoActividadRepository extends MongoRepository<EventoActividad, String> {
-    List<EventoActividad> findTop20ByOrderByTimestampDesc();
+    List<EventoActividad> findTop20BySalaIdInOrderByTimestampDesc(List<Long> salaIds);
 }

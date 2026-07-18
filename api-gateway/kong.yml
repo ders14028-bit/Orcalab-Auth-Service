@@ -6,6 +6,19 @@ _transform: true
 #   docker compose up --scale auth-service=2
 # y agrega el nuevo target (host:puerto del nuevo contenedor) a la lista.
 
+# Global (sin service/route asociado): aplica a toda la API. X-Content-Type-Options
+# y X-Frame-Options no hacen falta aca -Spring Security ya los manda por default en
+# cada microservicio-, pero HSTS y CSP no los manda nadie todavia. CSP minimo porque
+# esto es JSON/WebSocket, no HTML: no hay recursos que cargar, es solo defensa en
+# profundidad por si algo alguna vez confunde el content-type.
+plugins:
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - "Strict-Transport-Security:max-age=31536000; includeSubDomains"
+          - "Content-Security-Policy:default-src 'none'"
+
 upstreams:
   - name: auth-service-upstream
     algorithm: round-robin

@@ -1,0 +1,2 @@
+# Build de Maven — se regenera con `mvn package` / el build multi-stage de cada Dockerfile.
+target/

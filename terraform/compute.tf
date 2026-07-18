@@ -33,6 +33,7 @@ locals {
     mongo_password      = var.mongo_master_password
     jwt_secret          = var.jwt_secret
     admin_seed_password = var.admin_seed_password
+    frontend_origin     = var.frontend_origin
   })
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {

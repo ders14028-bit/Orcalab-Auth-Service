@@ -34,12 +34,20 @@ public class MapaHistorialController {
 
     @GetMapping("/api/salas/{salaId}/marcadores")
     public List<Marcador> marcadores(@PathVariable Long salaId) {
+        verificarMembresia(salaId);
         return marcadorRepository.findBySalaId(salaId);
     }
 
     @GetMapping("/api/salas/{salaId}/rutas")
     public List<Ruta> rutas(@PathVariable Long salaId) {
+        verificarMembresia(salaId);
         return rutaRepository.findBySalaId(salaId);
+    }
+
+    private void verificarMembresia(Long salaId) {
+        if (!roomServiceClient.esMiembro(salaId, authContext.tokenActual())) {
+            throw new AccessDeniedException("No eres miembro de esta sala");
+        }
     }
 
     // REST (no WebSocket, a diferencia de crear/editar en MapaController): la verificación de

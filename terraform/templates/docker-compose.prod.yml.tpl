@@ -42,6 +42,7 @@ services:
       SPRING_DATA_REDIS_SSL_ENABLED: "true"
       JWT_SECRET: ${jwt_secret}
       ROOM_SERVICE_URL: http://room-service:8082
+      CORS_ALLOWED_ORIGINS: ${frontend_origin}
     networks: [orcalab-net]
 
   reporting-service:
@@ -54,6 +55,8 @@ services:
       REDIS_PORT: "6379"
       SPRING_DATA_REDIS_SSL_ENABLED: "true"
       JWT_SECRET: ${jwt_secret}
+      ROOM_SERVICE_URL: http://room-service:8082
+      CORS_ALLOWED_ORIGINS: ${frontend_origin}
     networks: [orcalab-net]
 
   kong:
