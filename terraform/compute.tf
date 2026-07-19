@@ -51,6 +51,8 @@ locals {
     loki_config                = file("${path.module}/../observability-service/loki/loki-config.yml")
     promtail_config            = file("${path.module}/../observability-service/promtail/promtail-config.yml")
     grafana_datasources_config = file("${path.module}/../observability-service/grafana/provisioning/datasources/datasources.yml")
+    grafana_dashboard_provider = file("${path.module}/../observability-service/grafana/provisioning/dashboards/dashboard-provider.yml")
+    grafana_dashboard_orcalab  = file("${path.module}/../observability-service/grafana/provisioning/dashboards/orcalab-microservicios.json")
   })
 }
 

@@ -51,6 +51,7 @@ mkdir -p /opt/orcalab/observability/prometheus
 mkdir -p /opt/orcalab/observability/loki
 mkdir -p /opt/orcalab/observability/promtail
 mkdir -p /opt/orcalab/observability/grafana/provisioning/datasources
+mkdir -p /opt/orcalab/observability/grafana/provisioning/dashboards
 
 cat > /opt/orcalab/observability/prometheus/prometheus.yml <<'PROMETHEUS_EOF'
 ${prometheus_config}
@@ -67,6 +68,14 @@ PROMTAIL_EOF
 cat > /opt/orcalab/observability/grafana/provisioning/datasources/datasources.yml <<'GRAFANA_DS_EOF'
 ${grafana_datasources_config}
 GRAFANA_DS_EOF
+
+cat > /opt/orcalab/observability/grafana/provisioning/dashboards/dashboard-provider.yml <<'GRAFANA_DASH_PROVIDER_EOF'
+${grafana_dashboard_provider}
+GRAFANA_DASH_PROVIDER_EOF
+
+cat > /opt/orcalab/observability/grafana/provisioning/dashboards/orcalab-microservicios.json <<'GRAFANA_DASH_ORCALAB_EOF'
+${grafana_dashboard_orcalab}
+GRAFANA_DASH_ORCALAB_EOF
 
 # --- 4. Build del front (S3 staging privado, via LabInstanceProfile) ---------
 mkdir -p /opt/orcalab/front-dist
