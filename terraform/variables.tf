@@ -131,15 +131,27 @@ variable "asg_desired_capacity" {
 # (acm:ImportCertificate no requiere validación de dominio), generado con
 # terraform/scripts/generate-alb-cert.sh. Ver limitación documentada en el README.
 variable "alb_certificate_arn" {
-  description = "ARN del certificado ACM (autofirmado, importado) para el listener HTTPS del ALB"
+  description = "ARN del certificado ACM que usa el listener HTTPS del ALB como default (hoy: Let's Encrypt de orcalab.duckdns.org)"
   type        = string
 }
 
-# Origen real del front, para la whitelist de CORS de realtime-service (setAllowedOrigins,
-# no wildcard). Separado en su propia variable -en vez de derivarlo del DNS del ALB- porque
-# se espera migrar de DuckDNS a un dominio propio más adelante sin tocar código Java.
-variable "frontend_origin" {
-  description = "Origen (scheme+host, sin trailing slash) del frontend en producción, para CORS"
+# Dominio propio (orcalab.online, comprado 2026-07-18) migrado en paralelo al de
+# DuckDNS: certificado adicional via SNI (aws_lb_listener_certificate en
+# loadbalancer.tf), sin tocar el default del listener - así ambos dominios
+# sirven su certificado correcto al mismo tiempo mientras se confirma que el
+# nuevo es estable. Cuando se decida el corte definitivo, este ARN pasa a
+# alb_certificate_arn y este recurso se elimina.
+variable "orcalab_online_certificate_arn" {
+  description = "ARN del certificado ACM (Let's Encrypt) para orcalab.online, agregado via SNI al listener HTTPS"
   type        = string
-  default     = "https://orcalab.duckdns.org"
+}
+
+# Origen real del front, para la whitelist de CORS de realtime-service/reporting-service
+# (setAllowedOrigins, no wildcard) y de vision-service. CSV: ambos dominios
+# habilitados en paralelo mientras se confirma la migración a orcalab.online;
+# SecurityConfig.java ya lo splitea por coma (allowedOriginsCsv.split(",")).
+variable "frontend_origin" {
+  description = "Orígenes permitidos (CSV, scheme+host, sin trailing slash) del frontend en producción, para CORS"
+  type        = string
+  default     = "https://orcalab.duckdns.org,https://orcalab.online"
 }

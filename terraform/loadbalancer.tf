@@ -71,3 +71,13 @@ resource "aws_lb_listener" "https" {
     target_group_arn = aws_lb_target_group.web.arn
   }
 }
+
+# Certificado adicional via SNI para orcalab.online (dominio propio, comprado
+# 2026-07-18), sin reemplazar el default del listener (orcalab.duckdns.org,
+# arriba) - el ALB sirve el cert correcto segun el hostname que pida cada
+# visitante, asi ambos dominios quedan validos en paralelo mientras se
+# confirma la estabilidad del nuevo. Ver nota en variables.tf.
+resource "aws_lb_listener_certificate" "orcalab_online" {
+  listener_arn    = aws_lb_listener.https.arn
+  certificate_arn = var.orcalab_online_certificate_arn
+}

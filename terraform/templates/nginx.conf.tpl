@@ -38,14 +38,17 @@ http {
     # fonts.googleapis.com por el @import de Google Fonts en index.css (los
     # .woff2 en si vienen de fonts.gstatic.com, de ahi font-src). img-src
     # blanquea los dos tile servers reales de MapView.tsx (CARTO basemaps y
-    # GEBCO WMS de bathymetria) - sin esto el mapa se queda en blanco. connect-src
+    # GEBCO WMS de bathymetria) - sin esto el mapa se queda en blanco; blob:
+    # habilita el preview de foto en MarkerFormModal (URL.createObjectURL antes
+    # de mandarla a vision-service) - sin esto el preview queda en blanco y
+    # silencioso, el navegador ni intenta la carga. connect-src
     # incluye el STUN de Google que usa useVoiceCall.ts para WebRTC (sin TURN
     # configurado); 'self' ya cubre /api y /ws same-origin.
     location / {
       add_header X-Content-Type-Options "nosniff" always;
       add_header X-Frame-Options "DENY" always;
       add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-      add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.basemaps.cartocdn.com https://wms.gebco.net; connect-src 'self' stun:stun.l.google.com:19302; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://wms.gebco.net; connect-src 'self' stun:stun.l.google.com:19302; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';" always;
 
       try_files $uri $uri/ /index.html;
     }
