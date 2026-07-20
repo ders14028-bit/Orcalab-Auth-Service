@@ -1,7 +1,7 @@
 package com.orcalab.realtime.presence;
 
+import com.orcalab.realtime.broadcast.RealtimeBroadcaster;
 import com.orcalab.realtime.state.SalaEstadoService;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,13 +18,13 @@ public class PresenciaBroadcastService {
 
     private final PresenciaService presenciaService;
     private final SalaEstadoService salaEstadoService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RealtimeBroadcaster broadcaster;
 
     public PresenciaBroadcastService(PresenciaService presenciaService, SalaEstadoService salaEstadoService,
-                                      SimpMessagingTemplate messagingTemplate) {
+                                      RealtimeBroadcaster broadcaster) {
         this.presenciaService = presenciaService;
         this.salaEstadoService = salaEstadoService;
-        this.messagingTemplate = messagingTemplate;
+        this.broadcaster = broadcaster;
     }
 
     public List<PresenciaMensaje.UsuarioPresente> construirListaPresentes(Long salaId) {
@@ -39,7 +39,7 @@ public class PresenciaBroadcastService {
     private void difundir(Long salaId, Long usuarioId,
                            BiFunction<Long, List<PresenciaMensaje.UsuarioPresente>, PresenciaMensaje> constructor) {
         var presentes = construirListaPresentes(salaId);
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/presencia", constructor.apply(usuarioId, presentes));
+        broadcaster.broadcast("/topic/sala/" + salaId + "/presencia", constructor.apply(usuarioId, presentes));
     }
 
     public void difundirEntrada(Long salaId, Long usuarioId) {

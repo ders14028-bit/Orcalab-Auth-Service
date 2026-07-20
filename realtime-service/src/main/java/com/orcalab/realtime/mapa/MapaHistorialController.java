@@ -1,9 +1,9 @@
 package com.orcalab.realtime.mapa;
 
+import com.orcalab.realtime.broadcast.RealtimeBroadcaster;
 import com.orcalab.realtime.config.AuthContext;
 import com.orcalab.realtime.room.RoomServiceClient;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,16 +20,16 @@ public class MapaHistorialController {
     private final RutaRepository rutaRepository;
     private final RoomServiceClient roomServiceClient;
     private final AuthContext authContext;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RealtimeBroadcaster broadcaster;
 
     public MapaHistorialController(MarcadorRepository marcadorRepository, RutaRepository rutaRepository,
                                     RoomServiceClient roomServiceClient, AuthContext authContext,
-                                    SimpMessagingTemplate messagingTemplate) {
+                                    RealtimeBroadcaster broadcaster) {
         this.marcadorRepository = marcadorRepository;
         this.rutaRepository = rutaRepository;
         this.roomServiceClient = roomServiceClient;
         this.authContext = authContext;
-        this.messagingTemplate = messagingTemplate;
+        this.broadcaster = broadcaster;
     }
 
     @GetMapping("/api/salas/{salaId}/marcadores")
@@ -73,7 +73,7 @@ public class MapaHistorialController {
 
         // La alerta que este marcador haya generado (si era CRITICO) se conserva como registro
         // histórico — ya cumplió su propósito de notificar en su momento.
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/marcadores/eliminado",
+        broadcaster.broadcast("/topic/sala/" + salaId + "/marcadores/eliminado",
                 new MarcadorEliminadoMensaje(marcadorId));
 
         return ResponseEntity.noContent().build();

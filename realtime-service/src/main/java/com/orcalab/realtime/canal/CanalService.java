@@ -1,10 +1,10 @@
 package com.orcalab.realtime.canal;
 
+import com.orcalab.realtime.broadcast.RealtimeBroadcaster;
 import com.orcalab.realtime.chat.MensajeRepository;
 import com.orcalab.realtime.config.AuthContext;
 import com.orcalab.realtime.room.RoomServiceClient;
 import com.orcalab.realtime.voz.VozService;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -19,17 +19,17 @@ public class CanalService {
     private final MensajeRepository mensajeRepository;
     private final RoomServiceClient roomServiceClient;
     private final AuthContext authContext;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RealtimeBroadcaster broadcaster;
     private final VozService vozService;
 
     public CanalService(CanalRepository canalRepository, MensajeRepository mensajeRepository,
                          RoomServiceClient roomServiceClient, AuthContext authContext,
-                         SimpMessagingTemplate messagingTemplate, VozService vozService) {
+                         RealtimeBroadcaster broadcaster, VozService vozService) {
         this.canalRepository = canalRepository;
         this.mensajeRepository = mensajeRepository;
         this.roomServiceClient = roomServiceClient;
         this.authContext = authContext;
-        this.messagingTemplate = messagingTemplate;
+        this.broadcaster = broadcaster;
         this.vozService = vozService;
     }
 
@@ -47,7 +47,7 @@ public class CanalService {
         Canal canal = new Canal(salaId, request.getNombre().trim(), request.getTipo(), usuarioId);
         canal = canalRepository.save(canal);
 
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/canales", canal);
+        broadcaster.broadcast("/topic/sala/" + salaId + "/canales", canal);
 
         return canal;
     }
@@ -78,7 +78,7 @@ public class CanalService {
             vozService.limpiarCanal(salaId, canalId);
         }
 
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/canales/eliminado", new CanalEliminadoMensaje(canalId));
+        broadcaster.broadcast("/topic/sala/" + salaId + "/canales/eliminado", new CanalEliminadoMensaje(canalId));
     }
 
     /** Se invoca cuando se crea una sala, para que el chat tenga un canal de texto disponible desde el inicio. */
@@ -93,6 +93,6 @@ public class CanalService {
         // dentro (fue redirigido de inmediato) y su fetch inicial de canales casi siempre
         // llega antes de que este consumidor procese SalaCreada — sin el broadcast, el
         // líder no ve el canal "general" hasta recargar la página.
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/canales", canal);
+        broadcaster.broadcast("/topic/sala/" + salaId + "/canales", canal);
     }
 }

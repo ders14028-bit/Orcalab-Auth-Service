@@ -1,13 +1,13 @@
 package com.orcalab.realtime.mapa;
 
 import com.orcalab.realtime.alerta.AlertaService;
+import com.orcalab.realtime.broadcast.RealtimeBroadcaster;
 import com.orcalab.realtime.event.EventPublisher;
 import com.orcalab.realtime.event.MapaEvento;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Controller;
 
@@ -19,16 +19,16 @@ public class MapaController {
 
     private final MarcadorRepository marcadorRepository;
     private final RutaRepository rutaRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RealtimeBroadcaster broadcaster;
     private final EventPublisher eventPublisher;
     private final AlertaService alertaService;
 
     public MapaController(MarcadorRepository marcadorRepository, RutaRepository rutaRepository,
-                           SimpMessagingTemplate messagingTemplate, EventPublisher eventPublisher,
+                           RealtimeBroadcaster broadcaster, EventPublisher eventPublisher,
                            AlertaService alertaService) {
         this.marcadorRepository = marcadorRepository;
         this.rutaRepository = rutaRepository;
-        this.messagingTemplate = messagingTemplate;
+        this.broadcaster = broadcaster;
         this.eventPublisher = eventPublisher;
         this.alertaService = alertaService;
     }
@@ -56,7 +56,7 @@ public class MapaController {
 
         marcador = marcadorRepository.save(marcador);
 
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/marcadores", marcador);
+        broadcaster.broadcast("/topic/sala/" + salaId + "/marcadores", marcador);
 
         String tipoEvento = esEdicion ? "MarcadorEditado" : "MarcadorAgregado";
         eventPublisher.publicar(MapaEvento.marcador(tipoEvento, salaId, usuarioId, marcador.getId(),
@@ -76,7 +76,7 @@ public class MapaController {
         Ruta ruta = new Ruta(salaId, usuarioId, request.getPuntos(), request.getDescripcion());
         ruta = rutaRepository.save(ruta);
 
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/rutas", ruta);
+        broadcaster.broadcast("/topic/sala/" + salaId + "/rutas", ruta);
 
         eventPublisher.publicar(MapaEvento.ruta(salaId, usuarioId, ruta.getId(), ruta.getDescripcion()));
     }

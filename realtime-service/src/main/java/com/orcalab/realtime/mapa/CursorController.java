@@ -1,10 +1,10 @@
 package com.orcalab.realtime.mapa;
 
+import com.orcalab.realtime.broadcast.RealtimeBroadcaster;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Controller;
 
@@ -14,10 +14,10 @@ import java.util.Map;
 @Controller
 public class CursorController {
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RealtimeBroadcaster broadcaster;
 
-    public CursorController(SimpMessagingTemplate messagingTemplate) {
-        this.messagingTemplate = messagingTemplate;
+    public CursorController(RealtimeBroadcaster broadcaster) {
+        this.broadcaster = broadcaster;
     }
 
     // Evento efímero: no se persiste en ninguna base de datos, solo se retransmite
@@ -27,7 +27,7 @@ public class CursorController {
                              SimpMessageHeaderAccessor headerAccessor) {
         Long usuarioId = extraerUsuarioId(headerAccessor.getUser());
 
-        messagingTemplate.convertAndSend("/topic/sala/" + salaId + "/cursores",
+        broadcaster.broadcast("/topic/sala/" + salaId + "/cursores",
                 Map.of("usuarioId", usuarioId, "x", request.getX(), "y", request.getY()));
     }
 

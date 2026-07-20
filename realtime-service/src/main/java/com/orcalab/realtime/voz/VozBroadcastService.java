@@ -1,6 +1,6 @@
 package com.orcalab.realtime.voz;
 
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.orcalab.realtime.broadcast.RealtimeBroadcaster;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,11 +10,11 @@ import java.util.function.BiFunction;
 public class VozBroadcastService {
 
     private final VozService vozService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RealtimeBroadcaster broadcaster;
 
-    public VozBroadcastService(VozService vozService, SimpMessagingTemplate messagingTemplate) {
+    public VozBroadcastService(VozService vozService, RealtimeBroadcaster broadcaster) {
         this.vozService = vozService;
-        this.messagingTemplate = messagingTemplate;
+        this.broadcaster = broadcaster;
     }
 
     public List<VozMensaje.ParticipanteVoz> construirListaParticipantes(Long salaId, String canalId) {
@@ -26,7 +26,7 @@ public class VozBroadcastService {
     private void difundir(Long salaId, String canalId, Long usuarioId,
                            BiFunction<Long, List<VozMensaje.ParticipanteVoz>, VozMensaje> constructor) {
         var participantes = construirListaParticipantes(salaId, canalId);
-        messagingTemplate.convertAndSend(
+        broadcaster.broadcast(
                 "/topic/sala/" + salaId + "/canal/" + canalId + "/voz/presentes",
                 constructor.apply(usuarioId, participantes));
     }
