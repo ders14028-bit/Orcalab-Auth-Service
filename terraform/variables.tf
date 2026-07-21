@@ -94,29 +94,35 @@ variable "grafana_admin_password" {
 # Cómputo
 # ---------------------------------------------------------------------------
 variable "instance_type" {
-  description = "Tipo de instancia del ASG (Kong + 4 Spring Boot ~2.5GB RAM => 4GB min)"
+  description = "Tipo de instancia del ASG (Kong + 4 Spring Boot ~2.5GB RAM => 4GB min). Subido a t3.large (2026-07-21): t3.medium se saturaba de CPU local (fan-out del broker STOMP) antes de agotar RAM."
   type        = string
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
-# MITIGACION TEMPORAL (ver "Limitación conocida" en el README): realtime-service
-# usa enableSimpleBroker (broker STOMP en memoria, local a cada instancia), así
-# que con 2+ réplicas la presencia/chat/voz no se sincronizan entre usuarios
-# enrutados a instancias distintas. Se fija 1 réplica hasta migrar a un relay
-# STOMP externo compartido (Redis/RabbitMQ). Valores de diseño: min=2, max=4.
+# Migrado a relay Redis Pub/Sub (2026-07-20, ver memoria realtime-redis-relay):
+# realtime-service ya no depende de enableSimpleBroker en memoria para difundir
+# entre instancias - chat/marcadores/alertas/voz-señalización se propagan via
+# Redis a todas las réplicas. Vuelve a los valores de diseño originales: min=2,
+# desired=2, max=4 (autoscaling por CPU ya definido en compute.tf).
+# GAP CONOCIDO, no resuelto por el relay: VozService y PresenciaService (roster
+# de voz y de presencia conectada) siguen en memoria local pura por instancia,
+# sin sincronizar entre réplicas - a diferencia de SalaEstadoService, que sí
+# reconstruye su estado completo desde el stream Redis. Con 2+ instancias el
+# roster de "quién está conectado" o "quién está en la llamada" puede quedar
+# incompleto según a qué instancia esté conectado cada usuario.
 variable "asg_min_size" {
   type    = number
-  default = 1
+  default = 2
 }
 
 variable "asg_max_size" {
   type    = number
-  default = 1
+  default = 4
 }
 
 variable "asg_desired_capacity" {
   type    = number
-  default = 1
+  default = 2
 }
 
 # ---------------------------------------------------------------------------

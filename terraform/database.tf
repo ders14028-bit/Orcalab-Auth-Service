@@ -20,7 +20,7 @@ resource "aws_db_instance" "postgres" {
   identifier     = "${var.project_name}-postgres"
   engine         = "postgres"
   engine_version = "16"
-  instance_class = "db.t3.micro"
+  instance_class = "db.t3.small" # subido de db.t3.micro (2026-07-21): pool de conexiones de auth-service se saturaba a ~60 usuarios concurrentes
 
   allocated_storage = 20
   storage_type      = "gp3"
@@ -34,6 +34,12 @@ resource "aws_db_instance" "postgres" {
   vpc_security_group_ids = [aws_security_group.data.id]
   publicly_accessible    = false
   multi_az               = false # fuera de alcance del lab; la HA se demuestra en la capa de computo
+
+  # Sin esto, el cambio de instance_class queda encolado para la proxima
+  # ventana de mantenimiento (podria ser dias) en vez de aplicarse ahora.
+  # Implica un reboot real de la instancia (single-AZ, sin standby) apenas
+  # se aplique - unos minutos de downtime de Postgres mientras redimensiona.
+  apply_immediately = true
 
   skip_final_snapshot = true
   deletion_protection = false
